@@ -70,13 +70,14 @@ def train_network(dataset):
             _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
             epoch_loss += c
             if (epoch + 1) % 250 == 0:
-                msg = 'Epoch' + str(epoch+1) + ' completed out of' + str(n_epochs) + ' loss:' + str(epoch_loss)
+                msg = 'Epoch ' + str(epoch+1) + ' completed out of ' + str(n_epochs) + ' loss: ' + str(epoch_loss)
                 tf.logging.info(msg)
 
         correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
 
         accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
-        tf.logging.info('Accuracy:', accuracy.eval({x: dataset.test.images, y: dataset.test.labels}))
+        msg = 'Accuracy: ' + str(accuracy.eval({x: dataset.test.images, y: dataset.test.labels}))
+        tf.logging.info(msg)
 
 if __name__ == '__main__':
     tf.logging.info("Loading MNIST dataset")
