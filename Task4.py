@@ -1,6 +1,10 @@
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
+from tensorflow.contrib.learn.python.learn.datasets.mnist import DataSet
+import collections
+import numpy as np
 
+Datasets = collections.namedtuple('Datasets', ['train', 'validation', 'test'])
 tf.logging.set_verbosity(tf.logging.INFO)
 mode = "train"
 
@@ -76,16 +80,24 @@ def train_network(dataset):
     #learning_rate = tf.placeholder(tf.float32, shape=[])
 
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(cost)
+    correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
+    accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
+
+    # for the validation improvement checking
+    last_validation_acc = 0
+    n_bad_batches = 0
 
     #add this for task 5b
     #optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for epoch in range(n_epochs):
+            mode = "train"
             epoch_loss = 0
             epoch_x, epoch_y = dataset.train.next_batch(batch_size)
             #also this for 5a
-            #_, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y, learning_rate: 0.001/(int(400/(epoch+1))+1)})
+            # learning_rate_cut = 2 ** int((epoch+1)/400)
+            #_, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y, learning_rate: 0.001/learning_rate_cut})
             _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
             epoch_loss += c
             tf.logging.info(epoch)
@@ -93,15 +105,52 @@ def train_network(dataset):
                 msg = 'Epoch ' + str(epoch+1) + ' completed out of ' + str(n_epochs) + ' loss: ' + str(epoch_loss)
                 tf.logging.info(msg)
 
+            # the validation accuracy
+            mode = "validation"
+            validation_acc = accuracy.eval({x: dataset.validation.images, y: dataset.validation.labels})
+            # checks for improvement
+            if validation_acc <= last_validation_acc:
+                n_bad_batches += 1
+            else:
+                # needs 3 consecutive batches. restarts the count
+                n_bad_batches = 0
+            # saves the validation accuracy
+            last_validation_acc = validation_acc
+            # when there was 3 consecutive bad batches
+            if n_bad_batches == 3:
+                tf.logging.info('Early stopping')
+                break
+
+        msg = 'Validation accuracy: ' + str(last_validation_acc)
+        tf.logging.info(msg)
         mode = "test"
-        correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
-        accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
         msg = 'Accuracy: ' + str(accuracy.eval({x: dataset.test.images, y: dataset.test.labels}))
         tf.logging.info(msg)
 
 if __name__ == '__main__':
     tf.logging.info("Loading MNIST dataset")
     mnist = input_data.read_data_sets("MNIST_data/", one_hot=True, validation_size=0)
+
+    train_size = len(mnist.train.images)
+    test_size = len(mnist.test.images)
+    dataset_size = train_size + test_size
+    validation_size = int(dataset_size / 5)
+
+    after_permutation_indexes = np.random.permutation(train_size)
+
+    # validation set
+    validation_images = mnist.train.images[after_permutation_indexes[: validation_size]]
+    validation_labels = mnist.train.labels[after_permutation_indexes[: validation_size]]
+
+    # train set
+    train_images = mnist.train.images[after_permutation_indexes[validation_size:]]
+    train_labels = mnist.train.labels[after_permutation_indexes[validation_size:]]
+
+    train = DataSet(train_images, train_labels, reshape=False)
+    validation = DataSet(validation_images, validation_labels, reshape=False)
+
+    mnist_with_validation = Datasets(train=train, validation=validation, test=mnist.test)
+
     tf.logging.info("Initiating Training")
-    train_network(mnist)
+    train_network(mnist_with_validation)
     tf.logging.info("Finished")
