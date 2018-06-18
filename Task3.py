@@ -71,33 +71,28 @@ def train_network(dataset):
     # runs the network
     prediction = network_model(x)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=y))
-    correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
-    accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(cost)
     with tf.Session() as sess:
-        tf.summary.scalar('cost', cost)
-        tf.summary.scalar('accuracy', accuracy)
-        merged_summary = tf.summary.merge_all()
-        writer = tf.summary.FileWriter("demos/2")
-        writer.add_graph(sess.graph)
         sess.run(tf.global_variables_initializer())
         for epoch in range(n_epochs):
             epoch_loss = 0
             epoch_x, epoch_y = dataset.train.next_batch(batch_size)
-            s, _, c = sess.run([merged_summary, optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
+            _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
             epoch_loss += c
             tf.logging.info(epoch)
             if (epoch + 1) % 250 == 0:
-                msg = 'Epoch' + str(epoch+1) + ' completed out of' + str(n_epochs) + ' loss:' + str(epoch_loss)
+                msg = 'Epoch ' + str(epoch+1) + ' completed out of ' + str(n_epochs) + ' loss: ' + str(epoch_loss)
                 tf.logging.info(msg)
-            writer.add_summary(s, epoch)
 
         mode = "test"
-        tf.logging.info('Accuracy:', accuracy.eval({x: dataset.test.images, y: dataset.test.labels}))
+        correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
+        accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
+        msg = 'Accuracy: ' + str(accuracy.eval({x: dataset.test.images, y: dataset.test.labels}))
+        tf.logging.info(msg)
 
 if __name__ == '__main__':
     tf.logging.info("Loading MNIST dataset")
-    mnist = input_data.read_data_sets("MNIST_data/", one_hot=True, validation_size=0)
+    mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
     tf.logging.info("Initiating Training")
     train_network(mnist)
     tf.logging.info("Finished")

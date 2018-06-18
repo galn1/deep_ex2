@@ -56,7 +56,6 @@ def train_network(dataset):
     trains the network
     """
     global mode
-
     x = tf.placeholder('float', [None, 784])
     y = tf.placeholder('float')
 
@@ -69,29 +68,36 @@ def train_network(dataset):
     # the learning rate
     learning_rate = 0.001
 
-    # validation set
-    validation_set = dataset.train
-
     # runs the network
     prediction = network_model(x)
     cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=prediction, labels=y))
+
+    #add this for task 5a
+    #learning_rate = tf.placeholder(tf.float32, shape=[])
+
     optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate).minimize(cost)
+
+    #add this for task 5b
+    #optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
         for epoch in range(n_epochs):
             epoch_loss = 0
             epoch_x, epoch_y = dataset.train.next_batch(batch_size)
+            #also this for 5a
+            #_, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y, learning_rate: 0.001/(int(400/(epoch+1))+1)})
             _, c = sess.run([optimizer, cost], feed_dict={x: epoch_x, y: epoch_y})
             epoch_loss += c
             tf.logging.info(epoch)
             if (epoch + 1) % 250 == 0:
-                msg = 'Epoch' + epoch + 1 + 'completed out of' + n_epochs + 'loss:' + epoch_loss
+                msg = 'Epoch ' + str(epoch+1) + ' completed out of ' + str(n_epochs) + ' loss: ' + str(epoch_loss)
                 tf.logging.info(msg)
 
         mode = "test"
         correct = tf.equal(tf.argmax(prediction, 1), tf.argmax(y, 1))
         accuracy = tf.reduce_mean(tf.cast(correct, 'float'))
-        tf.logging.info('Accuracy:', accuracy.eval({x: dataset.test.images, y: dataset.test.labels}))
+        msg = 'Accuracy: ' + str(accuracy.eval({x: dataset.test.images, y: dataset.test.labels}))
+        tf.logging.info(msg)
 
 if __name__ == '__main__':
     tf.logging.info("Loading MNIST dataset")
