@@ -101,7 +101,7 @@ def train_network(dataset):
 
 if __name__ == '__main__':
     tf.logging.info("Loading MNIST dataset")
-    mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
+    mnist = input_data.read_data_sets("MNIST_data/", one_hot=True, validation_size=0)
     tf.logging.info("Initiating Training")
     train_network(mnist)
     tf.logging.info("Finished")
